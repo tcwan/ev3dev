@@ -16,10 +16,11 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+on_rtd = os.getenv('READTHEDOCS') == 'True'
 
 # -- General configuration ------------------------------------------------
 
@@ -30,7 +31,7 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+extensions = ['sphinx.ext.todo']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -74,7 +75,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 pygments_style = 'sphinx'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = False
+todo_include_todos = True
 
 
 # -- Options for HTML output ----------------------------------------------
@@ -82,7 +83,12 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'default'
+if on_rtd:
+    html_theme = 'default'
+else:
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -153,4 +159,31 @@ texinfo_documents = [
 ]
 
 
+# -- Setup --
 
+def setup(app):
+    app.add_stylesheet('css/custom.css')
+
+
+# -- Hackery --
+
+from sphinx.writers.html import HTMLTranslator
+
+real_visit_literal = HTMLTranslator.visit_literal
+real_depart_literal = HTMLTranslator.depart_literal
+
+def new_visit_literal(self, node):
+    if 'kbd' in node['classes']:
+        self.body.append(self.starttag(node, 'kbd', '',
+                                       CLASS='docutils literal'))
+    else:
+        real_visit_literal(self, node)
+
+def new_depart_literal(self, node):
+    if 'kbd' in node['classes']:
+        self.body.append('</kbd>')
+    else:
+        real_depart_literal(self, node)
+
+HTMLTranslator.visit_literal = new_visit_literal
+HTMLTranslator.depart_literal = new_depart_literal
